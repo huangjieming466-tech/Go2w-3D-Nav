@@ -1,0 +1,4 @@
+# Root configuration for the 2026-09-10 stair MetaBag replay.
+sensor_config: "sensors/livox.yaml"
+runtime_config: "runtime/stair_mapping.yaml"
+logging_config: "logging/default.yaml"

@@ -1,0 +1,200 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Ground Grid
+      Enabled: true
+      Reference Frame: <Fixed Frame>
+      Plane: XY
+      Cell Size: 1
+      Plane Cell Count: 40
+      Line Style:
+        Value: Lines
+        Line Width: 0.03
+      Color: 130; 130; 130
+      Alpha: 0.45
+    - Class: rviz_default_plugins/Odometry
+      Name: Global Localization Odometry
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /baselink2map_kalman
+      Keep: 100
+      Shape: Arrow
+      Color: 30; 220; 80
+      Axes:
+        Value: true
+        Length: 0.5
+        Radius: 0.04
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Scan Planner Occupancy
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /grid_map/occupancy
+      Queue Size: 2
+      Style: Points
+      Size (Pixels): 3
+      Color Transformer: FlatColor
+      Color: 80; 170; 255
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Scan Planner Inflated Obstacles
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /grid_map/occupancy_inflate
+      Queue Size: 2
+      Style: Points
+      Size (Pixels): 3
+      # 与 plan_manage/launch/default.rviz 一致：按 Z 轴彩虹着色，
+      # 这样能看到膨胀体的高度分层，而不是一片纯色。
+      Color Transformer: AxisColor
+      Axis: Z
+      Use rainbow: true
+      Invert Rainbow: false
+      Min Color: 0; 0; 0
+      Max Color: 255; 255; 255
+      Alpha: 0.65
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: DDMR Traversable Map
+      Enabled: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /dddmr/traversable
+      Queue Size: 1
+      Style: Points
+      Size (Pixels): 4
+      Color Transformer: FlatColor
+      Color: 60; 220; 110
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: DDMR Lethal Map
+      Enabled: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /dddmr/lethal
+      Queue Size: 1
+      Style: Points
+      Size (Pixels): 3
+      Color Transformer: FlatColor
+      Color: 245; 80; 70
+      Alpha: 0.70
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/Path
+      Name: DDMR Global Path
+      Enabled: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /global_path
+      Buffer Length: 1
+      Line Style: Lines
+      Line Width: 0.06
+      Color: 250; 220; 40
+    - Class: rviz_default_plugins/Marker
+      Name: Sliding Map Boundary
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /grid_map/sliding_map_bbox
+      Namespaces:
+        {}
+    - Class: rviz_default_plugins/Marker
+      Name: Scan Planner Goal
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /goal_point
+      Namespaces:
+        {}
+    - Class: rviz_default_plugins/Marker
+      Name: Scan Planner Trajectory
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /optimal_list
+      Namespaces:
+        {}
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: false
+      Show Names: false
+      Frame Timeout: 15
+      Marker Scale: 0.4
+  Enabled: true
+  Global Options:
+    Background Color: 30; 30; 30
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /move_base_simple/goal
+      X std deviation: 0.5
+      Y std deviation: 0.5
+      Theta std deviation: 0.261799
+    - Class: rviz_default_plugins/PublishPoint
+      Single click: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /clicked_point
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 18
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Pitch: 0.8
+      Yaw: 0.8
+      Target Frame: <Fixed Frame>
+Window Geometry:
+  Height: 900
+  Width: 1440

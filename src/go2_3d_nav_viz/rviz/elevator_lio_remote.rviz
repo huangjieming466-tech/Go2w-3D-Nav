@@ -1,0 +1,146 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Ground Grid
+      Enabled: true
+      Reference Frame: <Fixed Frame>
+      Plane: XY
+      Cell Size: 1
+      Plane Cell Count: 40
+      Line Style:
+        Value: Lines
+        Line Width: 0.03
+      Color: 150; 150; 150
+      Alpha: 0.55
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LIO Registered Frame
+      Enabled: true
+      Topic:
+        Value: /LIO/clouds_lidar
+      Queue Size: 2
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: Intensity
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LIO Global Map (Live History)
+      Enabled: true
+      Topic:
+        Value: /LIO/global_map
+      Queue Size: 1
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: Intensity
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Historical PCD Map
+      Enabled: true
+      Topic:
+        Value: /lio/history_pcd_map
+      Queue Size: 1
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: FlatColor
+      Color: 255; 190; 40
+      Alpha: 0.35
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LIO Effective Points
+      Enabled: false
+      Topic:
+        Value: /LIO/clouds_lidar/effect
+      Queue Size: 2
+      Style: Points
+      Size (Pixels): 3
+      Color Transformer: FlatColor
+      Color: 70; 230; 110
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LIO Rejected Points
+      Enabled: false
+      Topic:
+        Value: /LIO/clouds_lidar/reject
+      Queue Size: 2
+      Style: Points
+      Size (Pixels): 3
+      Color Transformer: FlatColor
+      Color: 240; 70; 70
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: LIO IKD-Tree Map
+      Enabled: false
+      Topic:
+        Value: /LIO/ikdtree
+      Queue Size: 1
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: Intensity
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/Odometry
+      Name: Go2 Body Odometry
+      Enabled: true
+      Topic:
+        Value: /LIO/odom_vehicle
+      Keep: 100
+      Shape: Arrow
+      Color: 30; 220; 80
+      Axes:
+        Value: true
+        Length: 0.5
+        Radius: 0.04
+    - Class: rviz_default_plugins/Odometry
+      Name: Go2 IMU Odometry
+      Enabled: false
+      Topic:
+        Value: /LIO/odom_imu
+      Keep: 100
+      Shape: Axes
+      Color: 70; 150; 255
+      Axes:
+        Value: true
+        Length: 0.5
+        Radius: 0.04
+    - Class: rviz_default_plugins/TF
+      Name: LIO TF
+      Enabled: true
+      Show Names: false
+      Frame Timeout: 15
+      Marker Scale: 0.4
+  Enabled: true
+  Global Options:
+    Background Color: 30; 30; 30
+    Fixed Frame: world
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 18
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Pitch: 0.8
+      Yaw: 0.8
+      Target Frame: <Fixed Frame>
+Window Geometry:
+  Height: 900
+  Width: 1440

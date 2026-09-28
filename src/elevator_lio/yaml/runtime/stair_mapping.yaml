@@ -1,0 +1,101 @@
+# Offline reconstruction profile for the 2026-09-10 stair recording.
+# The recording contains no elevator event, so retain ordinary LIO behaviour.
+
+downsample:
+  point_filter_num: 1
+  blind: 0.8
+  use_box_blind: false
+  box_corner:
+    box_corner_x: [-0.7, 0.1]
+    box_corner_y: [-0.3, 0.3]
+    box_corner_z: [-0.4, 0.4]
+  filter_size: 0.08
+  adaptive:
+    enable: false
+    target_points: 20000
+    alpha: 1.2
+    min_voxel: 0.05
+    max_voxel: 0.8
+
+map:
+  local_map_cube_len: 1500.0
+
+relocation:
+  relocation_enable: false
+  pcd_load_name: ""
+
+pcd_save:
+  global_map_save_enable: true
+  every_n_frame_save: -1
+  timestamp_prefix: true
+  pcd_save_name: "stair_rebuilt_scans.pcd"
+
+pub:
+  global_map_pub_enable: true
+  ikdtree_pub_enable: false
+  clouds_lidar_pub_every_n: 1
+  high_frequency_odom: true
+  lidar_frequency: 10.0
+
+topic_pub:
+  clouds_lidar_topic_name: "/LIO/clouds_lidar"
+  clouds_lidar_effect_topic_name: "/LIO/clouds_lidar/effect"
+  clouds_lidar_reject_topic_name: "/LIO/clouds_lidar/reject"
+  global_map_topic_name: "/LIO/global_map"
+  ikdtree_topic_name: "/LIO/ikdtree"
+  odom_imu_topic_name: "/LIO/odom_imu"
+  odom_vehicle_topic_name: "/LIO/odom_vehicle"
+
+elevator:
+  enable: false
+  self_exit_detector: false
+  door_detector:
+    enable: false
+    dist_threshold: 3.0
+    time_threshold: 2.0
+    filter_percent: 0.06
+    cooldown_time: 5.0
+  strong_prior_enable: false
+  strong_prior_acc_var: 0.001
+  zupt:
+    enable: false
+    waiting:
+      enable: false
+      period_s: 3.0
+      vz_abs_thresh: 0.1
+      az_abs_thresh: 0.1
+  exit_icp_z:
+    enable: false
+    max_correction_m: 0.3
+    max_iterations: 5
+    min_effective_points: 20
+    min_information_ratio: 0.1
+    max_neighbor_distance_m: 0.5
+    min_abs_normal_z: 0.7
+    max_residual_m: 0.3
+    converge_m: 1.0e-3
+  rebuild_map_on_exit:
+    enable: false
+    frames: 5
+    min_points: 2000
+
+wheel:
+  wheel_enable: false
+
+estimator:
+  lidar_update_mode: "pose6"
+  online_gravity_estimation_enable: false
+  lidar_ieskf:
+    max_iterations: 4
+    converge_rot_rad: 1.0e-3
+    converge_pos_m: 1.0e-3
+    rematch_rot_rad: 2.0e-3
+    rematch_pos_m: 2.0e-3
+  ikdtree_match:
+    knn: 5
+    plane_fit_rmse_threshold: 0.05
+    neighbor_max_dist2: 5.0
+    gate_mode: "linear_range"
+    score_min: 0.95
+    match_thresh_base: 0.03
+    match_thresh_scale: 0.01

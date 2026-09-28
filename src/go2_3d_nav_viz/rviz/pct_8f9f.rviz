@@ -1,0 +1,86 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Cell Size: 2
+      Plane: XY
+      Plane Cell Count: 40
+      Reference Frame: <Fixed Frame>
+      Color: 160; 160; 160
+      Alpha: 0.5
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: Raw PCD Map
+      Topic: /raw_pcd_map
+      Queue Size: 2
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: FlatColor
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: PCT Tomogram
+      Topic: /pct_tomogram
+      Queue Size: 10
+      Style: Points
+      Size (Pixels): 4
+      Color Transformer: Intensity
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: PCT Global Path
+      Topic: /pct_path
+      Queue Size: 10
+      Line Style: Lines
+      Line Width: 0.08
+      Color: 25; 220; 80
+      Pose Style: None
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: PCT Waypoint Markers
+      Marker Topic: /pct_planner/waypoint_markers
+      Queue Size: 10
+    - Class: rviz_default_plugins/InteractiveMarkers
+      Enabled: true
+      Name: PCT Interactive Waypoints
+      Update Topic: /pct_waypoints/update
+      Queue Size: 10
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: world
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/PublishPoint
+      Topic: /clicked_point
+      Single click: true
+      Size: 0.1
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+        Distance: 42
+      Focal Point:
+          X: 12.6
+          Y: 4.6
+          Z: 3.5
+      Pitch: 1.05
+      Yaw: 0.8
+      Target Frame: <Fixed Frame>
+  Window Geometry:
+    Width: 1400
+    Height: 900

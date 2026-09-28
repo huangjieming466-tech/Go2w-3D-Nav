@@ -1,0 +1,55 @@
+# Colcon and ROS runtime output
+/build/
+/install/
+/log/
+/.colcon/
+/symlink_install_manifest.txt
+*.log
+
+# Python/editor caches
+**/__pycache__/
+*.py[cod]
+*.swp
+*~
+.vscode/
+.idea/
+
+# Local source-control metadata preserved from imported upstream repositories
+**/.git/
+**/.git_backup/
+**/.upstream_git/
+
+# Recorded sensor data and generated maps are intentionally kept outside Git
+**/PCD/
+**/pcd/
+**/rosbag*/
+**/lio_bags/
+*.pcd
+*.ply
+*.las
+*.laz
+*.bag
+*.db3
+*.mcap
+*.pickle
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.tum
+
+# Runtime/debug output
+**/temp/
+**/output/
+**/result/
+**/results/
+*.csv
+
+# Upstream demonstration media and the unused ROS 1 reference checkout
+**/doc/*.gif
+**/doc/*.mp4
+**/doc/*.pdf
+/vendor/
+
+# This symlink points to a separate local Livox workspace.
+/src/livox_ros_driver2

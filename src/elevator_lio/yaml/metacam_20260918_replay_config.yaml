@@ -1,0 +1,4 @@
+# Offline reconstruction profile for MetaCam-Air recording 2026-09-18.
+sensor_config: "sensors/livox.yaml"
+runtime_config: "runtime/metacam_20260918_mapping.yaml"
+logging_config: "logging/default.yaml"

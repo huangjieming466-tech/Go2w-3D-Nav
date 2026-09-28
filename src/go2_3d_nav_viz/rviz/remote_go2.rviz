@@ -1,0 +1,98 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Ground Grid
+      Enabled: true
+      Cell Size: 1
+      Plane: XY
+      Plane Cell Count: 40
+      Line Style:
+        Line Width: 0.03
+        Value: Lines
+      Color: 160; 160; 160
+      Alpha: 0.5
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Unitree LiDAR Cloud
+      Enabled: true
+      Topic:
+        Value: /utlidar/cloud
+      Queue Size: 5
+      Selectable: true
+      Size (Pixels): 2
+      Style: Points
+      Color Transformer: Intensity
+      Use Fixed Frame: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: USLAM Global Path Cloud
+      Enabled: true
+      Topic:
+        Value: /uslam/navigation/global_path
+      Queue Size: 2
+      Selectable: true
+      Size (Pixels): 4
+      Style: Points
+      Color Transformer: FlatColor
+      Color: 255; 0; 0
+      Use Fixed Frame: true
+    - Class: rviz_default_plugins/Odometry
+      Name: USLAM Frontend Odometry
+      Enabled: true
+      Topic:
+        Value: /uslam/frontend/odom
+      Keep: 100
+      Shape: Arrow
+      Covariance:
+        Position:
+          Value: false
+        Orientation:
+          Value: false
+        Value: false
+      Axes:
+        Value: true
+        Length: 0.5
+        Radius: 0.05
+      Covariance Color: 255; 255; 0
+      Covariance Alpha: 0.3
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: true
+      Frame Timeout: 15
+      Marker Scale: 0.5
+    - Class: rviz_default_plugins/Axes
+      Name: Map Axes
+      Enabled: true
+      Reference Frame: <Fixed Frame>
+      Length: 1
+      Radius: 0.05
+  Enabled: true
+  Global Options:
+    Background Color: 30; 30; 30
+    Fixed Frame: utlidar_lidar
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 20
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Name: Current View
+      Pitch: 0.8
+      Yaw: 0.8
+Window Geometry:
+  Height: 900
+  Width: 1440

@@ -1,0 +1,64 @@
+/**:
+  ros__parameters:
+    # Mapping output. Keep the map in the same frame that DDDMR consumes.
+    lio.map.save_map: false
+    lio.map.if_filter: true
+    lio.map.save_map_dir: "../../PCD/map_2026-09-17_144105"
+    lio.map.map_name: "go2w_mid360_map.pcd"
+    lio.map.ds_size: 0.15
+    lio.map.save_interval: 500
+
+    # 台架测试: 直连雷达, 用 Mid-360 内置 IMU。
+    # 机器狗上要改回 imu_topic: "/go2/imu"。
+    lio.ros.lidar_topic: "/livox/lidar"
+    lio.ros.imu_topic: "/livox/imu"
+
+    lio.sensor.lidar_type: 8
+    lio.sensor.blind: 0.5
+    lio.sensor.maxrange: 60.0
+    lio.sensor.filter_rate: 3
+    # Match Elevator-LIO: remove the rear-centred 90 degree sector within 2 m
+    # of the LiDAR, where the following person/body reflections are common.
+    lio.sensor.rear_near_filter_enable: true
+    lio.sensor.rear_near_range_m: 2.0
+    lio.sensor.rear_near_half_angle_deg: 45.0
+    lio.sensor.enable_downsample: true
+    lio.sensor.voxel_fliter_size: 0.20
+    lio.sensor.gravity_norm: 9.81
+    lio.sensor.imu_type: 1
+    lio.sensor.imu_na: 0.1
+    lio.sensor.imu_ng: 0.1
+    lio.sensor.imu_nba: 0.0001
+    lio.sensor.imu_nbg: 0.0001
+
+    # T_imu_lidar: translation and rotation of the lidar expressed in the IMU/body frame.
+    # 台架测试: 雷达和 IMU 同壳, 外参取单位阵。
+    # 机器狗上用 go2w_mid360.yaml 里的 (0.187,0,0.0803) + 13deg。
+    lio.extrinsic.lidar_imu: [0.0, 0.0, 0.0,
+                              1.0, 0.0, 0.0,
+                              0.0, 1.0, 0.0,
+                              0.0, 0.0, 1.0]
+
+    # Lidar origin expressed in the Go2 body frame. Super-LIO stores the inverse
+    # of the supplied Euler rotation, hence the -13 degree pitch here.
+    # 台架测试: 雷达即机体, 无偏移。
+    lio.extrinsic.odom_robo: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    lio.hash_map.hash_capacity: 2000000
+    lio.hash_map.vox_resolution: 0.30
+
+    lio.kf.kf_type: 0
+    lio.kf.kf_max_iterations: 4
+    lio.kf.kf_align_gravity: true
+    lio.kf.kf_quit_eps: 0.001
+
+    lio.output.robot: true
+    lio.output.plan_env_world: false
+    lio.output.plan_env_body: false
+    lio.output.ml_map: false
+    lio.output.planner: false
+    lio.output.map: true
+    lio.output.dense: false
+    lio.output.pub_step: 1
+
+    lio.eva.timer: true
