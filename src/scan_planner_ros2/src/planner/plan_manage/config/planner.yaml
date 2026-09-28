@@ -81,7 +81,7 @@ scan_planner_node:
     optimization.lambda_collision: 1.0
     optimization.lambda_feasibility: 0.1
     optimization.lambda_fitness: 1.0
-    optimization.dist0: 0.32
+    optimization.dist0: 0.45
     optimization.max_vel: 0.75
     optimization.max_acc: 0.5
     optimization.order: 3
