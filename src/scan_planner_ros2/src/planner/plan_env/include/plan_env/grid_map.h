@@ -14,6 +14,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rmw/qos_profiles.h>
 #include <tuple>
+#include <unordered_map>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -61,6 +62,11 @@ struct MappingParameters {
   double resolution_, resolution_inv_;
   double obstacles_inflation_z_up, obstacles_inflation_z_down;
   double double_cylinder_radius_, double_cylinder_offset_;
+  double collision_query_z_offset_;
+  bool dynamic_obstacle_aging_enabled_;
+  double dynamic_obstacle_ttl_sec_;
+  double static_obstacle_confirm_time_sec_;
+  int static_obstacle_confirm_scans_;
   bool map_sliding_en_;
   double map_sliding_thresh_;
   int map_sliding_thresh_vox_;
@@ -102,6 +108,7 @@ struct MappingData {
   // main map data, occupancy of each voxel and Euclidean distance
 
   std::vector<double> occupancy_buffer_;
+  std::vector<char> static_obstacle_buffer_;
   std::vector<char> occupancy_buffer_inflate_;
   std::vector<int> occupancy_buffer_inflate_cnt_;
   vector<Eigen::Vector3i> inflate_offsets_;
@@ -126,6 +133,9 @@ struct MappingData {
   // depth image projected point cloud
 
   vector<Eigen::Vector3d> proj_points_;
+  // False marks a ray endpoint clipped to the local update boundary; it is
+  // free-space evidence, not a measured obstacle return.
+  vector<char> proj_points_hit_;
   int proj_points_cnt;
 
   // flag buffers for speeding up raycasting
@@ -145,6 +155,13 @@ struct MappingData {
   int update_num_;
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
+struct DynamicHitEvidence
+{
+  double first_hit_time_sec{0.0};
+  double last_hit_time_sec{0.0};
+  int hit_scans{0};
 };
 
 class GridMap {
@@ -202,6 +219,10 @@ public:
 private:
   MappingParameters mp_;
   MappingData md_;
+  std::unordered_map<int, DynamicHitEvidence> dynamic_hit_evidence_;
+  int dynamic_expired_since_report_{0};
+  int static_promoted_since_report_{0};
+  double last_dynamic_report_time_sec_{0.0};
 
   // get depth image and sensor pose
   void depthPoseCallback(const sensor_msgs::msg::Image::ConstSharedPtr& img,
@@ -212,6 +233,8 @@ private:
 
   // update occupancy by raycasting
   void updateOccupancyCallback();
+  void ageDynamicOccupancy();
+  void recordDynamicHit(int addr, double now_sec);
   void visCallback();
 
   // main update process
@@ -369,6 +392,7 @@ inline int GridMap::getOccupancy(Eigen::Vector3d pos) {
 }
 
 inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
+  pos.z() += mp_.collision_query_z_offset_;
   Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
   Eigen::Vector3d front = pos + mp_.double_cylinder_offset_ * heading;
   Eigen::Vector3d rear = pos - mp_.double_cylinder_offset_ * heading;

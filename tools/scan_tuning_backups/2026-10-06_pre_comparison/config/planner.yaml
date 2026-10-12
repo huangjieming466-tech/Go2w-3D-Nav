@@ -1,0 +1,117 @@
+scan_planner_node:
+  ros__parameters:
+    use_sim_time: false
+
+    fsm.navi_mode: 1
+    # Rebuild the local trajectory after 0.5 m instead of waiting 1.0 m. At
+    # the real-robot speed limit (0.20 m/s), this reduces the normal replanning
+    # interval from about 5 s to about 2.5 s.
+    fsm.thresh_replan: 0.5
+    fsm.thresh_no_replan: 0.1
+    fsm.planning_horizon: 3.5
+    # Mode 3 follows the complete local segment of the external route instead
+    # of connecting directly to a single look-ahead point.
+    fsm.follow_reference_path: true
+    # DDDMR points are consumed in route order.  This is only the threshold
+    # for accepting the next point, never a global nearest-point search.
+    fsm.reference_reach_tolerance: 0.30
+    # Advance Mode 3 route progress from the current odom only within this
+    # ordered arc-length window. This prevents a nearby U-turn branch from
+    # being selected across a wall while removing already-reached start nodes.
+    fsm.reference_progress_max_advance: 0.60
+    # Stop earlier when a newly observed obstacle cannot be planned around.
+    fsm.emergency_time: 1.5
+    fsm.fail_safe: true
+    fsm.max_replan_fail_count: 1000
+
+    # Execution-level guard: validate the actual cmd_vel against the same
+    # inflated local GridMap used by SCAN before forwarding it to the robot.
+    execution_safety.enabled: true
+    execution_safety.horizon: 1.0
+    execution_safety.dt: 0.05
+    execution_safety.replan_delay: 0.15
+    execution_safety.replan_cooldown: 0.50
+
+    grid_map.resolution: 0.05
+    grid_map.sliding_map_size_x: 10.0
+    grid_map.sliding_map_size_y: 10.0
+    grid_map.sliding_map_size_z: 5.0
+    grid_map.local_update_range_x: 5.0
+    grid_map.local_update_range_y: 5.0
+    grid_map.local_update_range_z: 2.5
+    grid_map.map_sliding_en: true
+    grid_map.map_sliding_thresh: 0.2
+    # ---- 膨胀 / 楼梯可通行性 ----------------------------------------------
+    # 碰撞判定见 plan_env/grid_map.h:getInflateOccupancy()，只查一个机体中心点 Q：
+    #   双圆盘中心 = Q +- double_cylinder_offset（沿航向）
+    #   圆盘半径   = double_cylinder_radius
+    #   高度带     = [Q.z - obstacles_inflation_z_up, Q.z + obstacles_inflation_z_down]
+    # 任意占据体素落在高度带内、且水平距离小于圆盘半径 -> 判为碰撞。
+    #
+    # 可通行坡度上限:
+    #   slope_crit = (body_height - obstacles_inflation_z_up)
+    #                / (double_cylinder_offset + double_cylinder_radius)
+    #
+    # 注意方向: 拿真实点云按上面判据实测，楼梯上的阻挡体素落在机体中心
+    # **之上**，所以调 z_up / body_height（垂直方向）是反的 —— h 越大被挡越多。
+    # 横向安全距离主要由 radius 决定；offset 主要延长前后包络。
+    # Add a small doorway margin over the measured Go2W half-width.
+    # Two footprint circles: width = 2 * radius, length =
+    # 2 * (radius + offset). This gives 0.74 m x 0.48 m including margin.
+    grid_map.double_cylinder_radius: 0.24
+    grid_map.double_cylinder_offset: 0.13
+    # Query collision occupancy above the LIO body origin. The controller uses
+    # only XY/yaw, so this improves stair clearance without commanding Z motion.
+    grid_map.collision_query_z_offset: 0.30
+    # mode3 reference-path Z is aligned automatically to the current LIO odom
+    # at the nearest path point; stair height differences remain unchanged.
+    grid_map.obstacles_inflation_z_up: 0.0  # 0.1 -> 0.0
+    # A smaller vertical band prevents the next tread above a pitched/crouched
+    # body from trapping the trajectory start inside the inflated map.
+    grid_map.obstacles_inflation_z_down: 0.15
+    grid_map.frame_id: world
+    grid_map.sliding_map_frame_id: sliding_map
+    grid_map.ground_height: 0.0
+    grid_map.sensor_type: lidar
+    grid_map.cloud_is_world: true
+    grid_map.need_extrinsic: false
+
+    grid_map.cx: 321.04638671875
+    grid_map.cy: 243.44969177246094
+    grid_map.fx: 387.229248046875
+    grid_map.fy: 387.229248046875
+    grid_map.depth_filter_maxdist: 3.0
+    grid_map.depth_filter_mindist: 0.3
+    grid_map.depth_filter_margin: 1
+    grid_map.k_depth_scaling_factor: 1000.0
+    grid_map.skip_pixel: 2
+
+    grid_map.p_hit: 0.85
+    # Keep hit confirmation conservative, but let two consecutive free rays
+    # clear a previously saturated dynamic obstacle at 5-10 Hz.
+    grid_map.p_miss: 0.22
+    grid_map.p_min: 0.12
+    grid_map.p_max: 0.98
+    grid_map.p_occ: 0.80
+    grid_map.max_ray_length: 5.0
+    grid_map.vis_height: 0.3
+    grid_map.show_occ_time: false
+
+    # Must match the real closed-loop controller max_vx.  A faster timed
+    # spline makes the controller chase future points and cut inside corners.
+    manager.max_vel: 0.20
+    manager.max_acc: 0.5
+    manager.max_jerk: 4.0
+    manager.control_points_distance: 0.2
+    manager.feasibility_tolerance: 0.5
+    manager.planning_horizon: 3.5
+
+    optimization.lambda_smooth: 1.0
+    # Prefer obstacle clearance over retaining the shortest/smoothest rebound.
+    optimization.lambda_collision: 3.0
+    optimization.lambda_feasibility: 0.1
+    optimization.lambda_fitness: 1.0
+    optimization.dist0: 0.45
+    optimization.max_vel: 0.20
+    optimization.max_acc: 0.5
+    optimization.order: 3

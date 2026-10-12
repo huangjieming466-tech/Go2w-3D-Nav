@@ -33,6 +33,14 @@ void GridMap::initMap(rclcpp::Node *node)
   load_parameter(node_, "grid_map.obstacles_inflation_z_down", mp_.obstacles_inflation_z_down, -1.0);
   load_parameter(node_, "grid_map.double_cylinder_radius", mp_.double_cylinder_radius_, -1.0);
   load_parameter(node_, "grid_map.double_cylinder_offset", mp_.double_cylinder_offset_, 0.0);
+  load_parameter(node_, "grid_map.collision_query_z_offset", mp_.collision_query_z_offset_, 0.0);
+  load_parameter(node_, "grid_map.dynamic_obstacle_aging_enabled", mp_.dynamic_obstacle_aging_enabled_, false);
+  load_parameter(node_, "grid_map.dynamic_obstacle_ttl_sec", mp_.dynamic_obstacle_ttl_sec_, 3.0);
+  load_parameter(node_, "grid_map.static_obstacle_confirm_time_sec", mp_.static_obstacle_confirm_time_sec_, 0.5);
+  load_parameter(node_, "grid_map.static_obstacle_confirm_scans", mp_.static_obstacle_confirm_scans_, 5);
+  mp_.dynamic_obstacle_ttl_sec_ = std::max(0.1, mp_.dynamic_obstacle_ttl_sec_);
+  mp_.static_obstacle_confirm_time_sec_ = std::max(0.0, mp_.static_obstacle_confirm_time_sec_);
+  mp_.static_obstacle_confirm_scans_ = std::max(1, mp_.static_obstacle_confirm_scans_);
   load_parameter(node_, "grid_map.map_sliding_en", mp_.map_sliding_en_, true);
   load_parameter(node_, "grid_map.map_sliding_thresh", mp_.map_sliding_thresh_, mp_.resolution_);
 
@@ -117,6 +125,7 @@ void GridMap::initMap(rclcpp::Node *node)
   int buffer_size = mp_.map_voxel_num_(0) * mp_.map_voxel_num_(1) * mp_.map_voxel_num_(2);
 
   md_.occupancy_buffer_ = vector<double>(buffer_size, mp_.clamp_min_log_ - mp_.unknown_flag_);
+  md_.static_obstacle_buffer_ = vector<char>(buffer_size, 0);
   md_.occupancy_buffer_inflate_ = vector<char>(buffer_size, 0);
   md_.occupancy_buffer_inflate_cnt_ = vector<int>(buffer_size, 0);
   rebuildInflationOffsets();
@@ -129,6 +138,7 @@ void GridMap::initMap(rclcpp::Node *node)
   md_.raycast_num_ = 0;
 
   md_.proj_points_.resize(640 * 480 / mp_.skip_pixel_ / mp_.skip_pixel_);
+  md_.proj_points_hit_.resize(md_.proj_points_.size(), 1);
   md_.proj_points_cnt = 0;
 
   /* init callback */
@@ -182,6 +192,10 @@ void GridMap::initMap(rclcpp::Node *node)
   md_.ray_pos_.setZero();
   md_.sliding_map_frame_pos_.setZero();
   md_.ray_q_ = Eigen::Quaterniond::Identity();
+  dynamic_hit_evidence_.clear();
+  dynamic_expired_since_report_ = 0;
+  static_promoted_since_report_ = 0;
+  last_dynamic_report_time_sec_ = node_->now().seconds();
 
   md_.fuse_time_ = 0.0;
   md_.update_num_ = 0;
@@ -228,6 +242,8 @@ void GridMap::rebuildInflationOffsets()
 void GridMap::resetAllMapData()
 {
   std::fill(md_.occupancy_buffer_.begin(), md_.occupancy_buffer_.end(), mp_.clamp_min_log_ - mp_.unknown_flag_);
+  std::fill(md_.static_obstacle_buffer_.begin(), md_.static_obstacle_buffer_.end(), 0);
+  dynamic_hit_evidence_.clear();
   std::fill(md_.occupancy_buffer_inflate_.begin(), md_.occupancy_buffer_inflate_.end(), 0);
   std::fill(md_.occupancy_buffer_inflate_cnt_.begin(), md_.occupancy_buffer_inflate_cnt_.end(), 0);
   std::fill(md_.count_hit_and_miss_.begin(), md_.count_hit_and_miss_.end(), 0);
@@ -297,6 +313,11 @@ void GridMap::applyOccupancyUpdate(const Eigen::Vector3i& id, double new_log_odd
   md_.occupancy_buffer_[addr] = new_log_odds;
   if (was_occ != now_occ)
     updateInflation(id, now_occ ? 1 : -1);
+  if (was_occ && !now_occ)
+  {
+    md_.static_obstacle_buffer_[addr] = 0;
+    dynamic_hit_evidence_.erase(addr);
+  }
 }
 
 void GridMap::resetCellByAddress(int addr)
@@ -307,6 +328,8 @@ void GridMap::resetCellByAddress(int addr)
     updateInflation(id_g, -1);
 
   md_.occupancy_buffer_[addr] = mp_.clamp_min_log_ - mp_.unknown_flag_;
+  md_.static_obstacle_buffer_[addr] = 0;
+  dynamic_hit_evidence_.erase(addr);
   md_.count_hit_[addr] = 0;
   md_.count_hit_and_miss_[addr] = 0;
   md_.flag_rayend_[addr] = -1;
@@ -406,6 +429,8 @@ void GridMap::updateSlidingMap(const Eigen::Vector3d& center)
   for (int addr : clear_addrs)
   {
     md_.occupancy_buffer_[addr] = mp_.clamp_min_log_ - mp_.unknown_flag_;
+    md_.static_obstacle_buffer_[addr] = 0;
+    dynamic_hit_evidence_.erase(addr);
     md_.occupancy_buffer_inflate_cnt_[addr] = 0;
     md_.occupancy_buffer_inflate_[addr] = 0;
     md_.count_hit_[addr] = 0;
@@ -534,7 +559,9 @@ void GridMap::projectDepthImage()
       //   pt_world = closetPointInMap(pt_world, md_.ray_pos_);
       // }
 
-      md_.proj_points_[md_.proj_points_cnt++] = pt_world;
+      md_.proj_points_[md_.proj_points_cnt] = pt_world;
+      md_.proj_points_hit_[md_.proj_points_cnt] = 1;
+      ++md_.proj_points_cnt;
     }
   }
 }
@@ -568,34 +595,23 @@ void GridMap::raycastProcess()
   for (int i = 0; i < md_.proj_points_cnt; ++i)
   {
     pt_w = md_.proj_points_[i];
+    bool endpoint_is_hit = md_.proj_points_hit_[i] != 0;
 
     // set flag for projected point
 
     if (!isInMap(pt_w))
     {
       pt_w = closetPointInMap(pt_w, md_.ray_pos_);
-
-      length = (pt_w - md_.ray_pos_).norm();
-      if (length > mp_.max_ray_length_)
-      {
-        pt_w = (pt_w - md_.ray_pos_) / length * mp_.max_ray_length_ + md_.ray_pos_;
-      }
-      vox_idx = setCacheOccupancy(pt_w, 0);
+      endpoint_is_hit = false;
     }
-    else
+
+    length = (pt_w - md_.ray_pos_).norm();
+    if (length > mp_.max_ray_length_)
     {
-      length = (pt_w - md_.ray_pos_).norm();
-
-      if (length > mp_.max_ray_length_)
-      {
-        pt_w = (pt_w - md_.ray_pos_) / length * mp_.max_ray_length_ + md_.ray_pos_;
-        vox_idx = setCacheOccupancy(pt_w, 0);
-      }
-      else
-      {
-        vox_idx = setCacheOccupancy(pt_w, 1);
-      }
+      pt_w = (pt_w - md_.ray_pos_) / length * mp_.max_ray_length_ + md_.ray_pos_;
+      endpoint_is_hit = false;
     }
+    vox_idx = setCacheOccupancy(pt_w, endpoint_is_hit ? 1 : 0);
 
     max_x = max(max_x, pt_w(0));
     max_y = max(max_y, pt_w(1));
@@ -675,8 +691,9 @@ void GridMap::raycastProcess()
     int idx_ctns = toAddress(idx);
     md_.cache_voxel_.pop();
 
-    double log_odds_update =
-        md_.count_hit_[idx_ctns] >= md_.count_hit_and_miss_[idx_ctns] - md_.count_hit_[idx_ctns] ? mp_.prob_hit_log_ : mp_.prob_miss_log_;
+    const bool hit_observation = md_.count_hit_[idx_ctns] > 0 &&
+                                 md_.count_hit_[idx_ctns] >= md_.count_hit_and_miss_[idx_ctns] - md_.count_hit_[idx_ctns];
+    double log_odds_update = hit_observation ? mp_.prob_hit_log_ : mp_.prob_miss_log_;
 
     md_.count_hit_[idx_ctns] = md_.count_hit_and_miss_[idx_ctns] = 0;
 
@@ -701,6 +718,81 @@ void GridMap::raycastProcess()
         std::min(std::max(md_.occupancy_buffer_[idx_ctns] + log_odds_update, mp_.clamp_min_log_),
                  mp_.clamp_max_log_);
     applyOccupancyUpdate(idx, new_log_odds);
+    if (in_local && hit_observation &&
+        md_.occupancy_buffer_[idx_ctns] > mp_.min_occupancy_log_ &&
+        !md_.static_obstacle_buffer_[idx_ctns])
+      recordDynamicHit(idx_ctns, node_->now().seconds());
+  }
+}
+
+void GridMap::recordDynamicHit(int addr, double now_sec)
+{
+  auto [it, inserted] = dynamic_hit_evidence_.try_emplace(
+      addr, DynamicHitEvidence{now_sec, now_sec, 1});
+  if (!inserted)
+  {
+    DynamicHitEvidence &evidence = it->second;
+    if (now_sec - evidence.last_hit_time_sec > mp_.dynamic_obstacle_ttl_sec_)
+    {
+      evidence = DynamicHitEvidence{now_sec, now_sec, 1};
+    }
+    else
+    {
+      evidence.last_hit_time_sec = now_sec;
+      ++evidence.hit_scans;
+    }
+  }
+
+  const DynamicHitEvidence &evidence = it->second;
+  if (evidence.hit_scans >= mp_.static_obstacle_confirm_scans_ &&
+      now_sec - evidence.first_hit_time_sec >= mp_.static_obstacle_confirm_time_sec_)
+  {
+    md_.static_obstacle_buffer_[addr] = 1;
+    dynamic_hit_evidence_.erase(it);
+    ++static_promoted_since_report_;
+  }
+}
+
+void GridMap::ageDynamicOccupancy()
+{
+  if (!mp_.dynamic_obstacle_aging_enabled_)
+    return;
+
+  const double now_sec = node_->now().seconds();
+  for (auto it = dynamic_hit_evidence_.begin(); it != dynamic_hit_evidence_.end();)
+  {
+    const int addr = it->first;
+    const double age_sec = now_sec - it->second.last_hit_time_sec;
+    if (md_.occupancy_buffer_[addr] <= mp_.min_occupancy_log_)
+    {
+      it = dynamic_hit_evidence_.erase(it);
+      continue;
+    }
+    if (age_sec < mp_.dynamic_obstacle_ttl_sec_)
+    {
+      ++it;
+      continue;
+    }
+
+    Eigen::Vector3i id;
+    hashIdToGlobalIndex(addr, id);
+    it = dynamic_hit_evidence_.erase(it);
+    applyOccupancyUpdate(id, mp_.clamp_min_log_ - mp_.unknown_flag_);
+    md_.count_hit_[addr] = 0;
+    md_.count_hit_and_miss_[addr] = 0;
+    ++dynamic_expired_since_report_;
+  }
+
+  if (now_sec - last_dynamic_report_time_sec_ >= 5.0)
+  {
+    if (dynamic_expired_since_report_ > 0 || static_promoted_since_report_ > 0)
+      RCLCPP_INFO(node_->get_logger(),
+                  "Occupancy layers: expired transient=%d, promoted static=%d, pending transient=%zu, ttl=%.1fs",
+                  dynamic_expired_since_report_, static_promoted_since_report_,
+                  dynamic_hit_evidence_.size(), mp_.dynamic_obstacle_ttl_sec_);
+    dynamic_expired_since_report_ = 0;
+    static_promoted_since_report_ = 0;
+    last_dynamic_report_time_sec_ = now_sec;
   }
 }
 
@@ -743,7 +835,10 @@ void GridMap::visCallback()
 void GridMap::updateOccupancyCallback()
 {
   if (!md_.occ_need_update_)
+  {
+    ageDynamicOccupancy();
     return;
+  }
 
   /* update occupancy */
   // ros::Time t1, t2, t3, t4;
@@ -753,6 +848,7 @@ void GridMap::updateOccupancyCallback()
     projectDepthImage();
   // t2 = ros::Time::now();
   raycastProcess();
+  ageDynamicOccupancy();
   // t3 = ros::Time::now();
 
   // t4 = ros::Time::now();
@@ -919,13 +1015,38 @@ void GridMap::cloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr 
     const bool in_local_range =
         fabs(devi(0)) <= mp_.local_update_range_(0) && fabs(devi(1)) <= mp_.local_update_range_(1) &&
         fabs(devi(2)) <= mp_.local_update_range_(2);
-    if (!in_local_range && ray_length <= mp_.max_ray_length_)
-      continue;
+    bool endpoint_is_hit = true;
+    if (!in_local_range)
+    {
+      if (ray_length < 1e-6)
+        continue;
+
+      double clear_length = std::min(ray_length, mp_.max_ray_length_);
+      for (int axis = 0; axis < 3; ++axis)
+      {
+        const double delta = std::abs(devi(axis));
+        if (delta > 1e-6)
+          clear_length = std::min(
+              clear_length, ray_length * mp_.local_update_range_(axis) / delta);
+      }
+      clear_length = std::max(0.0, clear_length - 0.5 * mp_.resolution_);
+      if (clear_length < 1e-6)
+        continue;
+
+      pt_world = ray_pos + devi / ray_length * clear_length;
+      endpoint_is_hit = false;
+    }
 
     if (md_.proj_points_cnt >= static_cast<int>(md_.proj_points_.size()))
+    {
       md_.proj_points_.push_back(pt_world);
+      md_.proj_points_hit_.push_back(endpoint_is_hit ? 1 : 0);
+    }
     else
+    {
       md_.proj_points_[md_.proj_points_cnt] = pt_world;
+      md_.proj_points_hit_[md_.proj_points_cnt] = endpoint_is_hit ? 1 : 0;
+    }
 
     md_.proj_points_cnt++;
   }

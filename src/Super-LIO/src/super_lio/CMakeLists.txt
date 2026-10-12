@@ -122,6 +122,11 @@ install(DIRECTORY launch/
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
+install(PROGRAMS
+  scripts/utlidar_to_super_lio.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(DIRECTORY config/
   DESTINATION share/${PROJECT_NAME}/config
 )

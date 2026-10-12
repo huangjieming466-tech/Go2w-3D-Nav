@@ -128,7 +128,7 @@ class MapPathToWorldBridge(Node):
             output.poses.append(target)
         self.publisher.publish(output)
         self.get_logger().info(
-            "Converted %d path poses from map to %s", len(output.poses), self.world_frame
+            f"Converted {len(output.poses)} path poses from map to {self.world_frame}"
         )
 
 

@@ -87,6 +87,14 @@ private:
 
   void bsplineCallback(const scan_planner_msgs::msg::Bspline::ConstSharedPtr msg)
   {
+    if (msg->pos_pts.empty() && msg->knots.empty())
+    {
+      receive_traj_ = false;
+      publishExecutionFrozen(false);
+      publishStop();
+      RCLCPP_INFO(get_logger(), "Received stop command; cleared active trajectory");
+      return;
+    }
     if (msg->pos_pts.empty() || msg->knots.empty() || msg->order <= 0)
     {
       RCLCPP_WARN(get_logger(), "Ignoring invalid B-spline");

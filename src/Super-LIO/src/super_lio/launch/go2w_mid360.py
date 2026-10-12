@@ -48,6 +48,13 @@ def generate_launch_description():
                     "lio.map.save_map": ParameterValue(save_map, value_type=bool),
                     "lio.map.save_map_dir": save_map_dir,
                     "lio.map.map_name": map_name,
+                    # Mapping benefits from suppressing the rear body/follower
+                    # returns. During navigation those returns are needed by
+                    # SCAN's 360-degree local obstacle layer, so keep only the
+                    # existing near-field blind radius when save_map is false.
+                    "lio.sensor.rear_near_filter_enable": ParameterValue(
+                        save_map, value_type=bool
+                    ),
                 },
             ],
         ),

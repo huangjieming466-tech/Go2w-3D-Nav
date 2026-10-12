@@ -60,6 +60,7 @@ namespace scan_planner
     double rviz_goal_height_;
     double self_inflation_z_up_, self_inflation_z_down_;
     double self_double_cylinder_radius_, self_double_cylinder_offset_;
+    double self_collision_query_z_offset_{0.0};
     std::string self_inflation_frame_id_;
 
     /* planning data */
@@ -73,6 +74,8 @@ namespace scan_planner
     int replan_fail_count_{0};
     int max_replan_fail_count_{1000};
     rclcpp::Time last_freeze_update_time_;
+    double reference_progress_time_{0.0};
+    rclcpp::Time last_reference_projection_time_;
 
     Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_; // odometry state
     Eigen::Quaterniond odom_orient_;

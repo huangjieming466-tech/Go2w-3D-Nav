@@ -20,6 +20,10 @@ def _setup(context):
     viz_share = get_package_share_directory("go2_3d_nav_viz")
     planner_yaml = os.path.join(scan_share, "config", "planner.yaml")
     controllers_yaml = os.path.join(scan_share, "config", "controllers.yaml")
+    planner_config = LaunchConfiguration("planner_config").perform(context)
+    controller_config = LaunchConfiguration("controller_config").perform(context)
+    planner_configs = [planner_yaml] + ([planner_config] if planner_config else [])
+    controller_configs = [controllers_yaml] + ([controller_config] if controller_config else [])
     is_real = _as_bool(LaunchConfiguration("is_real_world").perform(context))
     use_sim_time = _as_bool(LaunchConfiguration("use_sim_time").perform(context))
     sensor_type = LaunchConfiguration("sensor_type").perform(context)
@@ -28,6 +32,7 @@ def _setup(context):
     humanoid_pose_topic = LaunchConfiguration("humanoid_pose_topic").perform(context)
     keypoints_file = LaunchConfiguration("keypoints_file").perform(context)
     navi_mode = int(LaunchConfiguration("navi_mode").perform(context))
+    planning_horizon = float(LaunchConfiguration("planning_horizon").perform(context))
     launch_rviz = _as_bool(LaunchConfiguration("launch_rviz").perform(context))
     initial_path = "/initial_path"
     if sensor_type not in ("lidar", "depth"):
@@ -99,6 +104,8 @@ def _setup(context):
         **common,
         **intrinsics,
         "fsm.navi_mode": navi_mode,
+        "fsm.planning_horizon": planning_horizon,
+        "manager.planning_horizon": planning_horizon,
         "grid_map.frame_id": "world",
         "grid_map.sensor_type": sensor_type,
         "grid_map.cloud_is_world": cloud_is_world,
@@ -110,7 +117,7 @@ def _setup(context):
             executable="scan_planner_node",
             name="scan_planner_node",
             output="screen",
-            parameters=[planner_yaml] + ([keypoints_file] if keypoints_file else []) + [planner_overrides],
+            parameters=planner_configs + ([keypoints_file] if keypoints_file else []) + [planner_overrides],
             remappings=[
                 ("body_pose", body_pose),
                 ("sensor_pose", sensor_pose),
@@ -180,7 +187,7 @@ def _setup(context):
                 executable="open_loop_controller",
                 name="open_loop_controller",
                 output="screen",
-                parameters=[controllers_yaml, common],
+                parameters=controller_configs + [common],
                 remappings=[
                     ("planning/bspline", "/planning/bspline"),
                     ("body_pose", body_pose),
@@ -194,7 +201,7 @@ def _setup(context):
                 executable="closed_loop_controller",
                 name="closed_loop_controller",
                 output="screen",
-                parameters=[controllers_yaml, common],
+                parameters=controller_configs + [common],
                 remappings=[
                     ("body_pose", body_pose),
                     (
@@ -212,7 +219,7 @@ def _setup(context):
                     name="go2_kinematic_sim",
                     output="screen",
                     parameters=[
-                        controllers_yaml,
+                        *controller_configs,
                         common,
                         {
                             "init_x": float(LaunchConfiguration("init_x").perform(context)),
@@ -236,7 +243,7 @@ def _setup(context):
                     executable="go2_gait_publisher",
                     name="go2_gait_publisher",
                     output="screen",
-                    parameters=[controllers_yaml, common],
+                    parameters=controller_configs + [common],
                     remappings=[("body_pose", body_pose)],
                 ),
                 IncludeLaunchDescription(
@@ -288,6 +295,11 @@ def generate_launch_description():
                 description="Real-robot interface: elevator, super, super_global, or humanoid.",
             ),
             DeclareLaunchArgument("navi_mode", default_value="1"),
+            DeclareLaunchArgument(
+                "planning_horizon",
+                default_value="4.5",
+                description="Local planning lookahead distance in meters.",
+            ),
             DeclareLaunchArgument("sensor_type", default_value="lidar"),
             DeclareLaunchArgument("controller_mode", default_value="closed_loop"),
             DeclareLaunchArgument(
@@ -301,6 +313,16 @@ def generate_launch_description():
                 description="Global pose for the Fast-LIO Humanoid backend.",
             ),
             DeclareLaunchArgument("keypoints_file", default_value=""),
+            DeclareLaunchArgument(
+                "planner_config",
+                default_value="",
+                description="Optional planner parameter YAML; defaults to the package config.",
+            ),
+            DeclareLaunchArgument(
+                "controller_config",
+                default_value="",
+                description="Optional controller parameter YAML; defaults to the package config.",
+            ),
             DeclareLaunchArgument("use_gpu", default_value="false"),
             DeclareLaunchArgument("use_pcd_map", default_value="false"),
             DeclareLaunchArgument("pcd_map_file", default_value=""),

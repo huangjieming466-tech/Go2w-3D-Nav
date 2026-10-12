@@ -13,7 +13,9 @@
     lio.ros.imu_topic: "/go2/imu"
 
     lio.sensor.lidar_type: 8
-    lio.sensor.blind: 0.5
+    # Keep close returns for local collision avoidance. MID-360 points inside
+    # the old 0.5 m software blind radius never reached /lio/cloud_world.
+    lio.sensor.blind: 0.2
     lio.sensor.maxrange: 60.0
     lio.sensor.filter_rate: 3
     # Match Elevator-LIO: remove the rear-centred 90 degree sector within 2 m

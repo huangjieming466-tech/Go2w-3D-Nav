@@ -26,6 +26,7 @@ install(DIRECTORY launch rviz config
 
 install(PROGRAMS
   scripts/map_path_to_world_bridge.py
+  scripts/mid360_utlidar_fusion.py
   scripts/pcd_map_publisher.py
   scripts/super_map_cloud_bridge.py
   scripts/super_imu_to_base_odom.py

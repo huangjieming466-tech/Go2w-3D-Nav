@@ -63,6 +63,12 @@ private:
 
   void bsplineCallback(const scan_planner_msgs::msg::Bspline::ConstSharedPtr msg)
   {
+    if (msg->pos_pts.empty() && msg->knots.empty())
+    {
+      receive_traj_ = false;
+      RCLCPP_INFO(get_logger(), "Received stop command; cleared active trajectory");
+      return;
+    }
     UniformBspline pos_traj;
     if (!parseBspline(msg, pos_traj)) return;
     traj_ = {pos_traj, pos_traj.getDerivative()};

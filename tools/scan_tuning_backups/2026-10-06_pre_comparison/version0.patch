@@ -1,0 +1,192 @@
+diff --git a/src/scan_planner_ros2/src/planner/plan_env/include/plan_env/grid_map.h b/src/scan_planner_ros2/src/planner/plan_env/include/plan_env/grid_map.h
+index 19b77c5..96cc8a7 100644
+--- a/src/scan_planner_ros2/src/planner/plan_env/include/plan_env/grid_map.h
++++ b/src/scan_planner_ros2/src/planner/plan_env/include/plan_env/grid_map.h
+@@ -59,8 +59,9 @@ struct MappingParameters {
+   Eigen::Vector3i map_origin_idx_;
+   Eigen::Vector3d local_update_range_;
+   double resolution_, resolution_inv_;
+-  double obstacles_inflation_z_up, obstacles_inflation_z_down;
+-  double double_cylinder_radius_, double_cylinder_offset_;
++  double obstacles_inflation_z_up, obstacles_inflation_z_down;
++  double double_cylinder_radius_, double_cylinder_offset_;
++  double collision_query_z_offset_;
+   bool map_sliding_en_;
+   double map_sliding_thresh_;
+   int map_sliding_thresh_vox_;
+@@ -368,8 +369,9 @@ inline int GridMap::getOccupancy(Eigen::Vector3d pos) {
+   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
+ }
+ 
+-inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
+-  Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
++inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos, double yaw) {
++  pos.z() += mp_.collision_query_z_offset_;
++  Eigen::Vector3d heading(std::cos(yaw), std::sin(yaw), 0.0);
+   Eigen::Vector3d front = pos + mp_.double_cylinder_offset_ * heading;
+   Eigen::Vector3d rear = pos - mp_.double_cylinder_offset_ * heading;
+ 
+diff --git a/src/scan_planner_ros2/src/planner/plan_env/src/grid_map.cpp b/src/scan_planner_ros2/src/planner/plan_env/src/grid_map.cpp
+index 3efd86d..2c94cbf 100644
+--- a/src/scan_planner_ros2/src/planner/plan_env/src/grid_map.cpp
++++ b/src/scan_planner_ros2/src/planner/plan_env/src/grid_map.cpp
+@@ -33,6 +33,7 @@ void GridMap::initMap(rclcpp::Node *node)
+   load_parameter(node_, "grid_map.obstacles_inflation_z_down", mp_.obstacles_inflation_z_down, -1.0);
+   load_parameter(node_, "grid_map.double_cylinder_radius", mp_.double_cylinder_radius_, -1.0);
+   load_parameter(node_, "grid_map.double_cylinder_offset", mp_.double_cylinder_offset_, 0.0);
++  load_parameter(node_, "grid_map.collision_query_z_offset", mp_.collision_query_z_offset_, 0.0);
+   load_parameter(node_, "grid_map.map_sliding_en", mp_.map_sliding_en_, true);
+   load_parameter(node_, "grid_map.map_sliding_thresh", mp_.map_sliding_thresh_, mp_.resolution_);
+ 
+diff --git a/src/scan_planner_ros2/src/planner/plan_manage/config/controllers.yaml b/src/scan_planner_ros2/src/planner/plan_manage/config/controllers.yaml
+index 56255bc..5377b66 100644
+--- a/src/scan_planner_ros2/src/planner/plan_manage/config/controllers.yaml
++++ b/src/scan_planner_ros2/src/planner/plan_manage/config/controllers.yaml
+@@ -5,9 +5,9 @@ closed_loop_controller:
+     heading_error_threshold: 0.8
+     kp_pos: 0.8
+     kp_yaw: 1.5
+-    max_vx: 0.20
+-    max_vy: 0.0
+-    max_vyaw: 0.40
++    max_vx: 0.75
++    max_vy: 0.35
++    max_vyaw: 1.0
+     finish_dist: 0.15
+ 
+ open_loop_controller:
+diff --git a/src/scan_planner_ros2/src/planner/plan_manage/config/planner.yaml b/src/scan_planner_ros2/src/planner/plan_manage/config/planner.yaml
+index 01fffc5..99bd1c2 100644
+--- a/src/scan_planner_ros2/src/planner/plan_manage/config/planner.yaml
++++ b/src/scan_planner_ros2/src/planner/plan_manage/config/planner.yaml
+@@ -5,7 +5,7 @@ scan_planner_node:
+     fsm.navi_mode: 1
+     fsm.thresh_replan: 1.0
+     fsm.thresh_no_replan: 0.1
+-    fsm.planning_horizon: 7.5
++    fsm.planning_horizon: 3.5
+     fsm.emergency_time: 1.0
+     fsm.fail_safe: true
+     fsm.max_replan_fail_count: 1000
+@@ -19,31 +19,16 @@ scan_planner_node:
+     grid_map.local_update_range_z: 2.5
+     grid_map.map_sliding_en: true
+     grid_map.map_sliding_thresh: 0.2
+-    # ---- 膨胀 / 楼梯可通行性 ----------------------------------------------
+-    # 碰撞判定见 plan_env/grid_map.h:getInflateOccupancy()，只查一个机体中心点 Q：
+-    #   双圆盘中心 = Q +- double_cylinder_offset（沿航向）
+-    #   圆盘半径   = double_cylinder_radius
+-    #   高度带     = [Q.z - obstacles_inflation_z_up, Q.z + obstacles_inflation_z_down]
+-    # 任意占据体素落在高度带内、且水平距离小于圆盘半径 -> 判为碰撞。
+-    #
+-    # 可通行坡度上限:
+-    #   slope_crit = (body_height - obstacles_inflation_z_up)
+-    #                / (double_cylinder_offset + double_cylinder_radius)
+-    #
+-    # 注意方向: 拿真实点云按上面判据实测，楼梯上的阻挡体素落在机体中心
+-    # **之上**，所以调 z_up / body_height（垂直方向）是反的 —— h 越大被挡越多。
+-    # 真正起作用的是水平触及范围 offset + radius。实测（h=0.40，62 个路径点）:
+-    #   offset+radius = 0.30 -> 3 个点被挡   slope_crit 1.33
+-    #   offset+radius = 0.20 -> 1 个点被挡   slope_crit 2.00   <- 当前
+-    #   offset+radius = 0.10 -> 0 个点被挡   slope_crit 4.00
+-    # 触及 0.10 需要 footprint 半宽仅 0.10 m，对 Go2(半宽约 0.155 m) 会贴墙擦碰，
+-    # 因此这里取 0.20。若仍需放宽，优先动 offset，其次 radius。
+-    grid_map.double_cylinder_radius: 0.215   # 0.25 -> 0.20 -> 0.15
+-    grid_map.double_cylinder_offset: 0.05   # 0.18 -> 0.10 -> 0.05
++    # Stair-specific vertical collision envelope. Keep these separate from
++    # the author's horizontal footprint dimensions below.
++    grid_map.double_cylinder_radius: 0.25
++    grid_map.double_cylinder_offset: 0.18
++    # Stair-specific vertical collision query offset retained from Go2W tests.
++    grid_map.collision_query_z_offset: 0.30
+     # mode3 reference-path Z is aligned automatically to the current LIO odom
+     # at the nearest path point; stair height differences remain unchanged.
+     grid_map.obstacles_inflation_z_up: 0.0  # 0.1 -> 0.0
+-    grid_map.obstacles_inflation_z_down: 0.4
++    grid_map.obstacles_inflation_z_down: 0.15
+     grid_map.frame_id: world
+     grid_map.sliding_map_frame_id: sliding_map
+     grid_map.ground_height: 0.0
+@@ -75,13 +60,13 @@ scan_planner_node:
+     manager.max_jerk: 4.0
+     manager.control_points_distance: 0.2
+     manager.feasibility_tolerance: 0.5
+-    manager.planning_horizon: 7.5
++    manager.planning_horizon: 3.5
+ 
+     optimization.lambda_smooth: 1.0
+     optimization.lambda_collision: 1.0
+     optimization.lambda_feasibility: 0.1
+     optimization.lambda_fitness: 1.0
+-    optimization.dist0: 0.45
++    optimization.dist0: 0.2
+     optimization.max_vel: 0.75
+     optimization.max_acc: 0.5
+     optimization.order: 3
+diff --git a/src/scan_planner_ros2/src/planner/plan_manage/include/plan_manage/scan_replan_fsm.h b/src/scan_planner_ros2/src/planner/plan_manage/include/plan_manage/scan_replan_fsm.h
+index 84b2869..a316539 100644
+--- a/src/scan_planner_ros2/src/planner/plan_manage/include/plan_manage/scan_replan_fsm.h
++++ b/src/scan_planner_ros2/src/planner/plan_manage/include/plan_manage/scan_replan_fsm.h
+@@ -58,8 +58,9 @@ namespace scan_planner
+     double planning_horizon_;
+     double emergency_time_;
+     double rviz_goal_height_;
+-    double self_inflation_z_up_, self_inflation_z_down_;
+-    double self_double_cylinder_radius_, self_double_cylinder_offset_;
++    double self_inflation_z_up_, self_inflation_z_down_;
++    double self_double_cylinder_radius_, self_double_cylinder_offset_;
++    double self_collision_query_z_offset_{0.0};
+     std::string self_inflation_frame_id_;
+ 
+     /* planning data */
+diff --git a/src/scan_planner_ros2/src/planner/plan_manage/src/scan_replan_fsm.cpp b/src/scan_planner_ros2/src/planner/plan_manage/src/scan_replan_fsm.cpp
+index 2dcdac9..38e3d39 100644
+--- a/src/scan_planner_ros2/src/planner/plan_manage/src/scan_replan_fsm.cpp
++++ b/src/scan_planner_ros2/src/planner/plan_manage/src/scan_replan_fsm.cpp
+@@ -45,6 +45,7 @@ namespace scan_planner
+     self_inflation_z_down_ = load_parameter<double>(node_, "grid_map.obstacles_inflation_z_down", 0.0);
+     self_double_cylinder_radius_ = load_parameter<double>(node_, "grid_map.double_cylinder_radius", 0.0);
+     self_double_cylinder_offset_ = load_parameter<double>(node_, "grid_map.double_cylinder_offset", 0.0);
++    self_collision_query_z_offset_ = load_parameter<double>(node_, "grid_map.collision_query_z_offset", 0.0);
+     self_inflation_frame_id_ = load_parameter<std::string>(node_, "grid_map.frame_id", "world");
+ 
+     if (navi_mode_ == NAVI_MODE::PRESET_TARGET)
+@@ -371,6 +372,8 @@ namespace scan_planner
+     }
+     const double path_z_offset = odom_pos_(2) - nearest_path_z;
+ 
++    constexpr double min_waypoint_spacing = 0.5;
++    Eigen::Vector3d final_waypoint;
+     for (const auto& pose_stamped : msg->poses)
+     {
+       Eigen::Vector3d wp;
+@@ -379,10 +382,15 @@ namespace scan_planner
+       // DDDMR points lie on the support surface. Align the nearest support
+       // point with the current LIO body height while preserving stair height.
+       wp(2) = pose_stamped.pose.position.z + path_z_offset;
+-      waypoints.push_back(wp);
++      final_waypoint = wp;
++      if (waypoints.empty() || (wp - waypoints.back()).norm() >= min_waypoint_spacing)
++        waypoints.push_back(wp);
+     }
++    if ((waypoints.back() - final_waypoint).norm() > 1e-6)
++      waypoints.push_back(final_waypoint);
+     RCLCPP_INFO(node_->get_logger(),
+-                "Reference path Z aligned to odometry: offset=%.3f m", path_z_offset);
++                "Reference path Z aligned: offset=%.3f m, points=%zu -> %zu (spacing %.2f m)",
++                path_z_offset, msg->poses.size(), waypoints.size(), min_waypoint_spacing);
+     bool success = planGlobalTrajByWaypoints(waypoints);
+ 
+     if (success)
+@@ -493,8 +501,9 @@ namespace scan_planner
+     marker.color.a = 0.4;
+     marker.lifetime = rclcpp::Duration::from_seconds(0.2);
+ 
+-    Eigen::Vector3d center = odom_pos_;
+-    center(2) += 0.5 * (z_up - z_down);
++    Eigen::Vector3d center = odom_pos_;
++    center(2) += self_collision_query_z_offset_;
++    center(2) += 0.5 * (z_up - z_down);
+ 
+     Eigen::Vector3d heading(std::cos(getOdomYaw()), std::sin(getOdomYaw()), 0.0);
+     Eigen::Vector3d front = center + self_double_cylinder_offset_ * heading;

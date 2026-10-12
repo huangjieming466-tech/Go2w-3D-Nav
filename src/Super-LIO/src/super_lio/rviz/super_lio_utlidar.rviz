@@ -1,0 +1,145 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Ground Grid
+      Enabled: true
+      Reference Frame: <Fixed Frame>
+      Plane: XY
+      Cell Size: 1
+      Plane Cell Count: 40
+      Line Style:
+        Value: Lines
+        Line Width: 0.03
+      Color: 145; 145; 145
+      Alpha: 0.55
+    - Class: rviz_default_plugins/PointCloud2
+      Name: UTLIDAR Raw
+      Enabled: false
+      Topic:
+        Depth: 2
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /utlidar/cloud
+      Queue Size: 2
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: Intensity
+    - Class: rviz_default_plugins/PointCloud2
+      Name: UTLIDAR Converted Input
+      Enabled: true
+      Topic:
+        Depth: 2
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /lio/utlidar_super_lio
+      Queue Size: 2
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: Intensity
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Super-LIO Current Cloud
+      Enabled: true
+      Topic:
+        Value: /lio/cloud_world
+      Queue Size: 5
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: Intensity
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Accumulated Mapping Cloud
+      Enabled: true
+      Topic:
+        Value: /lio/history_map
+      Queue Size: 1
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: Intensity
+      Use Fixed Frame: true
+      Selectable: true
+    - Class: rviz_default_plugins/Path
+      Name: Super-LIO Path
+      Enabled: true
+      Topic:
+        Value: /lio/path
+      Buffer Length: 1
+      Line Style: Lines
+      Line Width: 0.05
+      Color: 40; 230; 90
+    - Class: rviz_default_plugins/Odometry
+      Name: LiDAR Odometry
+      Enabled: true
+      Topic:
+        Value: /lio/odom
+      Keep: 100
+      Shape: Arrow
+      Color: 60; 180; 255
+      Axes:
+        Value: true
+        Length: 0.5
+        Radius: 0.04
+    - Class: rviz_default_plugins/Odometry
+      Name: IMU Odometry
+      Enabled: false
+      Topic:
+        Value: /lio/imu/odom
+      Keep: 100
+      Shape: Axes
+      Color: 255; 200; 50
+      Axes:
+        Value: true
+        Length: 0.4
+        Radius: 0.03
+    - Class: rviz_default_plugins/Odometry
+      Name: Robot Odometry
+      Enabled: true
+      Topic:
+        Value: /lio/robo/odom
+      Keep: 100
+      Shape: Arrow
+      Color: 255; 90; 80
+      Axes:
+        Value: true
+        Length: 0.5
+        Radius: 0.04
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: false
+      Frame Timeout: 15
+      Marker Scale: 0.4
+  Enabled: true
+  Global Options:
+    Background Color: 30; 30; 30
+    Fixed Frame: world
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 18
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Pitch: 0.8
+      Yaw: 0.8
+      Target Frame: <Fixed Frame>
+Window Geometry:
+  Height: 900
+  Width: 1440

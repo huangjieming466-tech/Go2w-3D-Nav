@@ -229,7 +229,11 @@ def build_ground_map(xyz: np.ndarray, cfg: Optional[PlannerConfig] = None,
     lethal = np.zeros(len(nodes), dtype=bool)
     if len(obstacles):
         tree_obs_xy = cKDTree(obstacles[:, :2])
-        qi, ti = _cylinder_neighbors(nodes[:, :2], tree_obs_xy, cfg.inflation_radius)
+        # The hard collision radius can be larger than the soft-cost radius.
+        # Querying only inflation_radius silently omitted obstacle points that
+        # should still make a node lethal when robot_radius > inflation_radius.
+        obstacle_query_radius = max(cfg.inflation_radius, cfg.robot_radius)
+        qi, ti = _cylinder_neighbors(nodes[:, :2], tree_obs_xy, obstacle_query_radius)
         if len(qi):
             dz = np.einsum("ij,ij->i", obstacles[ti] - nodes[qi], node_normals[qi])
             band = (dz > cfg.max_step) & (dz < cfg.robot_height)

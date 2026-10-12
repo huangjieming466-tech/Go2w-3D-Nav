@@ -11,7 +11,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dddmr_py import (GlobalPlanner3D, PlannerConfig, make_demo_map,  # noqa: E402
-                      read_pcd, write_pcd)
+                      build_ground_map, read_pcd, write_pcd)
 from dddmr_py.mapgen import UPPER_Z  # noqa: E402
 
 
@@ -61,7 +61,8 @@ def test_path_is_continuous_and_safe():
 
     d, idx = p.ground.kdtree.query(path.points, k=1)
     assert d.max() < 0.4, f"路径偏离可通行面: {d.max():.3f} m"
-    assert not p.ground.lethal[idx].any(), "路径穿过了致命(碰撞)区域"
+    _, raw_idx = p.ground.kdtree.query(path.raw_points, k=1)
+    assert not p.ground.lethal[raw_idx].any(), "搜索路径经过了致命(碰撞)节点"
 
     d_xy = np.linalg.norm(np.diff(path.points[:, :2], axis=0), axis=1)
     d_z = np.abs(np.diff(path.points[:, 2]))
@@ -75,10 +76,48 @@ def test_path_is_continuous_and_safe():
 
 def test_low_clearance_is_blocked():
     """桌子下方净空 0.75 m < 机器人高度 -> 不可通行."""
-    p = _planner()
+    p = _planner(PlannerConfig(robot_height=0.9))
     idx = p.snap((2.0, 11.0, 0.0), radius=0.4)
     assert idx < 0, "桌子下方不应该被判为可通行"
     print("✓ 低净空区域(桌下)被正确判为不可通行")
+
+
+def test_robot_radius_larger_than_inflation_still_blocks_collision():
+    """Hard collision checks must not be clipped by the soft-cost radius."""
+    xs = np.arange(0.0, 1.01, 0.05)
+    ys = np.arange(-0.3, 0.31, 0.05)
+    xx, yy = np.meshgrid(xs, ys, indexing="xy")
+    floor = np.column_stack((xx.ravel(), yy.ravel(), np.zeros(xx.size)))
+    floor_normals = np.tile((0.0, 0.0, 1.0), (len(floor), 1))
+
+    wy = np.arange(-0.3, 0.31, 0.05)
+    wz = np.arange(0.0, 0.81, 0.05)
+    wall_y, wall_z = np.meshgrid(wy, wz, indexing="xy")
+    wall = np.column_stack((np.full(wall_y.size, 0.5), wall_y.ravel(), wall_z.ravel()))
+    wall_normals = np.tile((1.0, 0.0, 0.0), (len(wall), 1))
+
+    cfg = PlannerConfig(
+        voxel_size=0.0,
+        robot_radius=0.35,
+        inflation_radius=0.10,
+        robot_height=0.50,
+        max_step=0.20,
+        max_slope_deg=30.0,
+        max_roughness=0.05,
+        use_source_normals=True,
+    )
+    cloud = np.vstack((floor, wall))
+    normals = np.vstack((floor_normals, wall_normals))
+    ground = build_ground_map(cloud, cfg, source_normals=normals)
+
+    near_wall = np.flatnonzero(np.isclose(ground.nodes[:, 0], 0.20)
+                               & np.isclose(ground.nodes[:, 1], 0.0))
+    assert len(near_wall) == 1
+    assert ground.lethal[near_wall[0]], (
+        "A node 0.30 m from the wall must be lethal for a 0.35 m robot radius, "
+        "even when inflation_radius is only 0.10 m"
+    )
+    print("✓ inflation_radius < robot_radius 时硬碰撞仍按机器人半径生效")
 
 
 def test_unreachable_goal_reports_failure():
@@ -108,6 +147,7 @@ def test_waypoints():
 if __name__ == "__main__":
     tests = [test_pcd_roundtrip, test_plan_same_xy_different_level,
              test_path_is_continuous_and_safe, test_low_clearance_is_blocked,
+             test_robot_radius_larger_than_inflation_still_blocks_collision,
              test_unreachable_goal_reports_failure, test_dijkstra_matches_astar,
              test_waypoints]
     failed = 0
