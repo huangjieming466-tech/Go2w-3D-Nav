@@ -227,9 +227,9 @@ private:
   // get depth image and sensor pose
   void depthPoseCallback(const sensor_msgs::msg::Image::ConstSharedPtr& img,
                          const nav_msgs::msg::Odometry::ConstSharedPtr& pose);
-  void sensorPoseCallback(const nav_msgs::msg::Odometry::ConstSharedPtr& pose);
-  void slidingMapFrameCallback(const nav_msgs::msg::Odometry::ConstSharedPtr& pose);
-  void cloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& img);
+  void sensorPoseCallback(nav_msgs::msg::Odometry::ConstSharedPtr pose);
+  void slidingMapFrameCallback(nav_msgs::msg::Odometry::ConstSharedPtr pose);
+  void cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img);
 
   // update occupancy by raycasting
   void updateOccupancyCallback();

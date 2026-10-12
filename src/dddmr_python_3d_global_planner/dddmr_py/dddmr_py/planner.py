@@ -28,6 +28,21 @@ from .search import SearchResult, astar
 Point = Sequence[float]
 
 
+def _tree_query(tree, points, k=1):
+    try:
+        return tree.query(points, k=k, workers=-1)
+    except TypeError:
+        # Foxy's Ubuntu 20.04 image ships SciPy 1.3 without ``workers``.
+        return tree.query(points, k=k)
+
+
+def _tree_query_ball_point(tree, point, radius):
+    try:
+        return tree.query_ball_point(point, radius, workers=-1)
+    except TypeError:
+        return tree.query_ball_point(point, radius)
+
+
 @dataclass
 class Path:
     """规划结果. points: (N,3); yaw: (N,); normals: (N,3)."""
@@ -167,7 +182,7 @@ class GlobalPlanner3D:
         """把任意 3D 点吸附到最近的可通行节点, 返回节点索引; 失败返回 -1."""
         radius = self.config.snap_radius if radius is None else radius
         p = np.asarray(point, dtype=np.float64).reshape(3)
-        idx = self.ground.kdtree.query_ball_point(p, radius, workers=-1)
+        idx = _tree_query_ball_point(self.ground.kdtree, p, radius)
         if not idx:
             return -1
         idx = np.asarray(idx, dtype=np.int64)
@@ -229,7 +244,7 @@ class GlobalPlanner3D:
         n_samples = max(int(dist / (0.5 * cfg.voxel_size)) + 1, 2)
         samples = p + np.linspace(0.0, 1.0, n_samples)[:, None] * d
         tol = max(1.5 * cfg.voxel_size, cfg.voxel_size + cfg.max_step)
-        dists, idx = self.ground.kdtree.query(samples, k=1, workers=-1)
+        dists, idx = _tree_query(self.ground.kdtree, samples, k=1)
         if np.any(dists > tol):
             return False
         return not np.any(self.ground.lethal[idx])
@@ -292,7 +307,7 @@ class GlobalPlanner3D:
         if len(pts) == 0:
             return pts
         k = min(4, len(self.ground.nodes))
-        d, idx = self.ground.kdtree.query(pts, k=k, workers=-1)
+        d, idx = _tree_query(self.ground.kdtree, pts, k=k)
         d = np.atleast_2d(d)
         idx = np.atleast_2d(idx)
         w = 1.0 / (d + 1e-6)
@@ -315,7 +330,7 @@ class GlobalPlanner3D:
     def _surface_normals(self, pts: np.ndarray) -> np.ndarray:
         if len(pts) == 0:
             return np.empty((0, 3))
-        _, idx = self.ground.kdtree.query(pts, k=1, workers=-1)
+        _, idx = _tree_query(self.ground.kdtree, pts, k=1)
         return self.ground.normals[np.atleast_1d(idx)]
 
     # ------------------------------------------------------------------

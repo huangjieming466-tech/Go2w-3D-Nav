@@ -173,7 +173,7 @@ namespace scan_planner
       {
 
         double t;
-        double t_cur = (node_->now() - local_data_.start_time_).seconds();
+        double t_cur = (node_->get_clock()->now() - local_data_.start_time_).seconds();
 
         vector<double> pseudo_arc_length;
         vector<Eigen::Vector3d> segment_point;
@@ -304,7 +304,7 @@ namespace scan_planner
     t_refine = std::chrono::duration<double>(std::chrono::steady_clock::now() - t_start).count();
 
     // save planned results
-    updateTrajInfo(pos, node_->now());
+    updateTrajInfo(pos, node_->get_clock()->now());
 
     cout << "total time:\033[42m" << (t_init + t_opt + t_refine)
          << "\033[0m,optimize:" << (t_init + t_opt) << ",refine:" << t_refine << endl;
@@ -322,7 +322,7 @@ namespace scan_planner
       control_points.col(i) = stop_pos;
     }
 
-    updateTrajInfo(UniformBspline(control_points, 3, 1.0), node_->now());
+    updateTrajInfo(UniformBspline(control_points, 3, 1.0), node_->get_clock()->now());
 
     return true;
   }
@@ -403,7 +403,7 @@ namespace scan_planner
     else
       return false;
 
-    auto time_now = node_->now();
+    auto time_now = node_->get_clock()->now();
     global_data_.setGlobalTraj(gl_traj, time_now);
 
     return true;
@@ -467,7 +467,7 @@ namespace scan_planner
     else
       return false;
 
-    auto time_now = node_->now();
+    auto time_now = node_->get_clock()->now();
     global_data_.setGlobalTraj(gl_traj, time_now);
 
     return true;

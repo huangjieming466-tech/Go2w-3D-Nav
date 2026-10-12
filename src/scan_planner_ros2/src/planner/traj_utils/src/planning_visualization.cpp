@@ -28,7 +28,7 @@ namespace scan_planner
   {
     visualization_msgs::msg::Marker sphere, line_strip;
     sphere.header.frame_id = line_strip.header.frame_id = frame_id_;
-    sphere.header.stamp = line_strip.header.stamp = node_->now();
+    sphere.header.stamp = line_strip.header.stamp = node_->get_clock()->now();
     sphere.type = visualization_msgs::msg::Marker::SPHERE_LIST;
     line_strip.type = visualization_msgs::msg::Marker::LINE_STRIP;
     sphere.action = line_strip.action = visualization_msgs::msg::Marker::ADD;
@@ -63,7 +63,7 @@ namespace scan_planner
   {
     visualization_msgs::msg::Marker sphere, line_strip;
     sphere.header.frame_id = line_strip.header.frame_id = frame_id_;
-    sphere.header.stamp = line_strip.header.stamp = node_->now();
+    sphere.header.stamp = line_strip.header.stamp = node_->get_clock()->now();
     sphere.type = visualization_msgs::msg::Marker::SPHERE_LIST;
     line_strip.type = visualization_msgs::msg::Marker::LINE_STRIP;
     sphere.action = line_strip.action = visualization_msgs::msg::Marker::ADD;
@@ -98,7 +98,7 @@ namespace scan_planner
   {
     visualization_msgs::msg::Marker arrow;
     arrow.header.frame_id = frame_id_;
-    arrow.header.stamp = node_->now();
+    arrow.header.stamp = node_->get_clock()->now();
     arrow.type = visualization_msgs::msg::Marker::ARROW;
     arrow.action = visualization_msgs::msg::Marker::ADD;
 
@@ -139,7 +139,7 @@ namespace scan_planner
   {
     visualization_msgs::msg::Marker sphere;
     sphere.header.frame_id = frame_id_;
-    sphere.header.stamp = node_->now();
+    sphere.header.stamp = node_->get_clock()->now();
     sphere.type = visualization_msgs::msg::Marker::SPHERE;
     sphere.action = visualization_msgs::msg::Marker::ADD;
     sphere.id = id;
@@ -238,7 +238,7 @@ namespace scan_planner
 
     visualization_msgs::msg::Marker sphere, line_strip;
     sphere.header.frame_id = line_strip.header.frame_id = frame_id_;
-    sphere.header.stamp = line_strip.header.stamp = node_->now();
+    sphere.header.stamp = line_strip.header.stamp = node_->get_clock()->now();
     sphere.type = visualization_msgs::msg::Marker::SPHERE_LIST;
     line_strip.type = visualization_msgs::msg::Marker::LINE_STRIP;
     sphere.action = line_strip.action = visualization_msgs::msg::Marker::ADD;

@@ -31,7 +31,7 @@ namespace scan_planner
     flag_escape_emergency_ = true;
     need_hover_stop_ = false;
     replan_fail_count_ = 0;
-    last_freeze_update_time_ = node_->now();
+    last_freeze_update_time_ = node_->get_clock()->now();
 
     /*  fsm param  */
     navi_mode_ = load_parameter<int>(node_, "fsm.navi_mode", -1);
@@ -226,7 +226,7 @@ namespace scan_planner
       return false;
 
     reference_progress_time_ = 0.0;
-    last_reference_projection_time_ = node_->now();
+    last_reference_projection_time_ = node_->get_clock()->now();
 
     constexpr double step_size_t = 0.1;
     int i_end = floor(planner_manager_->global_data_.global_duration_ / step_size_t);
@@ -452,7 +452,7 @@ namespace scan_planner
 
   void SCANReplanFSM::updateLocalTrajTimeFreeze()
   {
-    const rclcpp::Time now = node_->now();
+    const rclcpp::Time now = node_->get_clock()->now();
     double dt = (now - last_freeze_update_time_).seconds();
     last_freeze_update_time_ = now;
 
@@ -489,7 +489,7 @@ namespace scan_planner
 
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = self_inflation_frame_id_.empty() ? "world" : self_inflation_frame_id_;
-    marker.header.stamp = node_->now();
+    marker.header.stamp = node_->get_clock()->now();
     marker.ns = "self_inflation";
     marker.type = visualization_msgs::msg::Marker::CYLINDER;
     marker.action = visualization_msgs::msg::Marker::ADD;
@@ -651,7 +651,7 @@ namespace scan_planner
     {
       /* determine if need to replan */
       LocalTrajData *info = &planner_manager_->local_data_;
-      rclcpp::Time time_now = node_->now();
+      rclcpp::Time time_now = node_->get_clock()->now();
       double t_cur = (time_now - info->start_time_).seconds();
       t_cur = min(info->duration_, t_cur);
 
@@ -745,7 +745,7 @@ namespace scan_planner
 
     finishProcess();
 
-    data_disp_.header.stamp = node_->now();
+    data_disp_.header.stamp = node_->get_clock()->now();
     data_disp_pub_->publish(data_disp_);
   }
 
@@ -765,7 +765,7 @@ namespace scan_planner
   bool SCANReplanFSM::planFromCurrentTraj()
   {
     LocalTrajData *info = &planner_manager_->local_data_;
-    rclcpp::Time time_now = node_->now();
+    rclcpp::Time time_now = node_->get_clock()->now();
     double t_cur = (time_now - info->start_time_).seconds();
     t_cur = std::min(std::max(t_cur, 0.0), info->duration_);
 
@@ -837,7 +837,7 @@ namespace scan_planner
     if (info->start_time_.seconds() < 1e-5 || info->duration_ <= 1e-5)
       return;
 
-    const double raw_t_cur = (node_->now() - info->start_time_).seconds();
+    const double raw_t_cur = (node_->get_clock()->now() - info->start_time_).seconds();
     if (raw_t_cur < -1e-3 || raw_t_cur > info->duration_ + 0.2)
       return;
 
@@ -865,7 +865,7 @@ namespace scan_planner
 
     /* ---------- check trajectory ---------- */
     constexpr double time_step = 0.01;
-    double t_cur = (node_->now() - info->start_time_).seconds();
+    double t_cur = (node_->get_clock()->now() - info->start_time_).seconds();
     double t_2_3 = info->duration_ * 2 / 3;
     for (double t = t_cur; t < info->duration_; t += time_step)
     {
@@ -1000,7 +1000,7 @@ namespace scan_planner
     {
       // Limit projection progress by physically plausible travel since the
       // previous update. Nearby stair flights must not cause path-branch jumps.
-      const rclcpp::Time now = node_->now();
+      const rclcpp::Time now = node_->get_clock()->now();
       const double elapsed = std::max(0.0, (now - last_reference_projection_time_).seconds());
       const double max_progress_distance = 0.10 + max_vel * elapsed * 1.5;
       const double anchor_t = std::clamp(reference_progress_time_, 0.0, duration);

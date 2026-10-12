@@ -52,7 +52,11 @@ def build_graph(gmap: GroundMap, cfg: PlannerConfig | None = None,
     nodes, lethal, cost = gmap.nodes, gmap.lethal, gmap.cost
     tree = gmap.kdtree
 
-    pairs = tree.query_pairs(radius, output_type="ndarray")
+    try:
+        pairs = tree.query_pairs(radius, output_type="ndarray")
+    except TypeError:
+        # SciPy 1.3 on the Foxy Jetson image only returns a set here.
+        pairs = np.asarray(list(tree.query_pairs(radius)), dtype=np.int64).reshape(-1, 2)
     if len(pairs) == 0:
         raise RuntimeError("建图失败: 没有任何邻接边, 请增大 connection_radius")
     a, b = pairs[:, 0], pairs[:, 1]

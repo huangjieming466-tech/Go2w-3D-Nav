@@ -195,7 +195,7 @@ void GridMap::initMap(rclcpp::Node *node)
   dynamic_hit_evidence_.clear();
   dynamic_expired_since_report_ = 0;
   static_promoted_since_report_ = 0;
-  last_dynamic_report_time_sec_ = node_->now().seconds();
+  last_dynamic_report_time_sec_ = node_->get_clock()->now().seconds();
 
   md_.fuse_time_ = 0.0;
   md_.update_num_ = 0;
@@ -721,7 +721,7 @@ void GridMap::raycastProcess()
     if (in_local && hit_observation &&
         md_.occupancy_buffer_[idx_ctns] > mp_.min_occupancy_log_ &&
         !md_.static_obstacle_buffer_[idx_ctns])
-      recordDynamicHit(idx_ctns, node_->now().seconds());
+      recordDynamicHit(idx_ctns, node_->get_clock()->now().seconds());
   }
 }
 
@@ -758,7 +758,7 @@ void GridMap::ageDynamicOccupancy()
   if (!mp_.dynamic_obstacle_aging_enabled_)
     return;
 
-  const double now_sec = node_->now().seconds();
+  const double now_sec = node_->get_clock()->now().seconds();
   for (auto it = dynamic_hit_evidence_.begin(); it != dynamic_hit_evidence_.end();)
   {
     const int addr = it->first;
@@ -930,7 +930,7 @@ void GridMap::depthPoseCallback(const sensor_msgs::msg::Image::ConstSharedPtr &i
   }
 }
 
-void GridMap::sensorPoseCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &pose_msg)
+void GridMap::sensorPoseCallback(nav_msgs::msg::Odometry::ConstSharedPtr pose_msg)
 {
   if (mp_.sensor_type_ != "lidar")
     return;
@@ -959,13 +959,13 @@ void GridMap::sensorPoseCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &
   updateSlidingMap(md_.ray_pos_);
 }
 
-void GridMap::slidingMapFrameCallback(const nav_msgs::msg::Odometry::ConstSharedPtr &pose)
+void GridMap::slidingMapFrameCallback(nav_msgs::msg::Odometry::ConstSharedPtr pose)
 {
   const geometry_msgs::msg::Point &pos = pose->pose.pose.position;
   md_.sliding_map_frame_pos_ = Eigen::Vector3d(pos.x, pos.y, pos.z);
 }
 
-void GridMap::cloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &img)
+void GridMap::cloudCallback(sensor_msgs::msg::PointCloud2::ConstSharedPtr img)
 {
   if (mp_.sensor_type_ != "lidar")
     return;
@@ -1094,7 +1094,7 @@ void GridMap::publishMap()
   sensor_msgs::msg::PointCloud2 cloud_msg;
 
   pcl::toROSMsg(cloud, cloud_msg);
-  cloud_msg.header.stamp = node_->now();
+  cloud_msg.header.stamp = node_->get_clock()->now();
   map_pub_->publish(cloud_msg);
 }
 
@@ -1136,7 +1136,7 @@ void GridMap::publishMapInflate(bool all_info)
   sensor_msgs::msg::PointCloud2 cloud_msg;
 
   pcl::toROSMsg(cloud, cloud_msg);
-  cloud_msg.header.stamp = node_->now();
+  cloud_msg.header.stamp = node_->get_clock()->now();
   map_inf_pub_->publish(cloud_msg);
 
   // ROS_INFO("pub map");
@@ -1148,7 +1148,7 @@ void GridMap::publishSlidingMapFrame()
     return;
 
   geometry_msgs::msg::TransformStamped transform;
-  transform.header.stamp = node_->now();
+  transform.header.stamp = node_->get_clock()->now();
   transform.header.frame_id = mp_.frame_id_;
   transform.child_frame_id = mp_.sliding_map_frame_id_;
   transform.transform.translation.x = md_.sliding_map_frame_pos_.x();
@@ -1165,7 +1165,7 @@ void GridMap::publishSlidingMapBBox()
 
   visualization_msgs::msg::Marker marker;
   marker.header.frame_id = mp_.frame_id_;
-  marker.header.stamp = node_->now();
+  marker.header.stamp = node_->get_clock()->now();
   marker.ns = "sliding_map";
   marker.id = 0;
   marker.type = visualization_msgs::msg::Marker::LINE_LIST;
@@ -1250,7 +1250,7 @@ void GridMap::publishUnknown()
 
   sensor_msgs::msg::PointCloud2 cloud_msg;
   pcl::toROSMsg(cloud, cloud_msg);
-  cloud_msg.header.stamp = node_->now();
+  cloud_msg.header.stamp = node_->get_clock()->now();
   unknown_pub_->publish(cloud_msg);
 }
 
@@ -1297,6 +1297,6 @@ void GridMap::publishDepthCloud()
 
   sensor_msgs::msg::PointCloud2 cloud_msg;
   pcl::toROSMsg(cloud, cloud_msg);
-  cloud_msg.header.stamp = node_->now();
+  cloud_msg.header.stamp = node_->get_clock()->now();
   depth_cloud_pub_->publish(cloud_msg);
 }
